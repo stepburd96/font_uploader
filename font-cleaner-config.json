@@ -1,0 +1,11 @@
+{
+    "desktopPath": "/Users/stephenburden/Desktop",
+    "srcFolder": "/fonts",
+    "processedDirPath": "./processed-fonts",
+    "acceptedExtensions": [".otf", ".ttf"],
+    "testing" : {
+        "mode": "on",
+        "src": "test-fonts"
+    },
+    "compressionType" : "no_spaces_no_special"
+}

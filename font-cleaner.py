@@ -1,11 +1,7 @@
-import fontforge, re, os
+import fontforge, re, os, json
+
 
 desktopPath = "/Users/stephenburden/Desktop"; # to change to user's path
-
-pathRel = str(input("Input relative path to virgin folder in /fonts: "))
-ignore = str(input("Input string to ignore in final font names: ")) # latinotype - mangueira font for Affirm ticket https://movableink.zendesk.com/agent/tickets/176310 whose font names included latinotype but that shouldn't show in the human readable version
-
-path = desktopPath + "/fonts/" + pathRel + "/"
 processedDirPath = desktopPath + "/processed-fonts/" + pathRel
 ext = ("otf", "ttf");
 
@@ -18,10 +14,16 @@ cleanedFontsLog = []
 
 ### Functions
 
-def fontCleaning(file) : # Assumes font has passed validation
-
+def fontCleaning(file, testing) : # Assumes font has passed validation
     try :
         font = fontforge.open(path + file)
+        
+        file_extension = (os.path.splitext(file))[1]
+        # file_extension = split_tup[1]
+        
+        if file_extension not in ext :
+            failedFiles.append(file)
+            failedFilesLog.append([file, 'Bad File Type'])
 
         sfnt_names = font.sfnt_names;
         for name in sfnt_names :
@@ -36,8 +38,6 @@ def fontCleaning(file) : # Assumes font has passed validation
         font.weight = ""
         font.version = ""
 
-        
-        
         # Font File Name Clean
         fontFileName = re.sub("[^a-zA-Z0-9.]", "", file)
         fontFileName = re.sub(f"{ignore}", "", fontFileName)
@@ -45,8 +45,11 @@ def fontCleaning(file) : # Assumes font has passed validation
         #Output gathering
         cleanedFonts.append(fontFileName)
         cleanedFontsLog.append([("fontname",font.fontname), ("familyname", font.familyname), ("fullname",font.fullname), ("sfntRevision",font.sfntRevision), ("weight", font.weight), ("version",font.version) ]) #append a list so the final log will be a nested list
+         
+        if testing == True :
+            return #dont generate a font file if in testing mode
         
-        # Save the font to local directory - fontFileName does not have to be file 
+         # Save the font to local directory - fontFileName does not have to be file
         font.generate(processedDirPath + "/" + fontFileName);
     except OSError :
         failedFilesLog.append([file, str(OSError)])
@@ -70,7 +73,6 @@ def outputPod (list, type) :
 def userExperience() :
     print(" ")
     print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    # print(f">> Directory: {os.listdir(path)}, {len(os.listdir(path))}")
     print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     print(f">> Cleaned Fonts Log --- {len(cleanedFonts)} ")
     print(outputPod(cleanedFontsLog, 'clean'))
@@ -82,14 +84,34 @@ def userExperience() :
         print(outputPod(failedFilesLog, 'failed'))
         print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         print(" ")
-
-### Script Body
-if not os.path.exists(processedDirPath) :
-    os.mkdir(desktopPath + "/processed-fonts/" + pathRel)
-
-for file in os.listdir(path) :
-    print(f">> File from OS --- {file}")
-    fontCleaning(file)
+        
 
 
+# still need to establish the ignore str
+
+def setup() :
+    f = open('./font-cleaner-config.json')
+    data = json.load(f)
+    return data
+    
+    
+
+def cleanLoop(dir='./test-fonts') : 
+    path = os.listdir(dir)
+    if not os.path.exists(processedDirPath) & dir != './test-fonts' :
+        os.mkdir(desktopPath + "/processed-fonts/" + pathRel)
+    for file in os.listdir(path) :
+        print(f">> File from OS --- {file}")
+        fontCleaning(file)
+
+setup = setup()
+
+if setup.testing.mode == "off" :
+    for file in os.listdir(path) :
+        fontCleaning(file)
+else : 
+    print('foo')
+cleanLoop(dir)
 userExperience()
+
+# Current idea is to run all the setup questions and then pass the font cleaning loop a test file if specified otherwise run the files in the dir specified by the user
